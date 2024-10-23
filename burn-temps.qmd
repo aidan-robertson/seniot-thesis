@@ -1,0 +1,38 @@
+---
+title: "burn-temps"
+format: html
+editor: visual
+---
+# set-up
+## reading in packages and data
+```{r}
+#| message: false
+# general use
+library(tidyverse)
+library(readxl)
+library(here)
+library(janitor)
+
+# visualizing pairs
+library(GGally)
+
+# model selection
+library(MuMIn)
+
+# model predictions
+library(ggeffects)
+
+# model tables
+library(gtsummary)
+library(flextable)
+library(modelsummary)
+```
+
+## loading in data
+```{r}
+burn_temps <- read_xlsx("Burn Temps.xlsx")
+
+# cleaning up data
+burn_temps_clean <- burn_temps %>% clean_names()
+```
+
