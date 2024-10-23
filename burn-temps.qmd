@@ -28,11 +28,29 @@ library(flextable)
 library(modelsummary)
 ```
 
-## loading in data
+## burn temp by depth & dist
 ```{r}
 burn_temps <- read_xlsx("Burn Temps.xlsx")
 
 # cleaning up data
-burn_temps_clean <- burn_temps %>% clean_names()
+burn_temps_clean <- burn_temps %>% clean_names() %>%
+  rename(distance = distance_from_edge_m)
+
+burn_temps_avg <- burn_temps_clean %>%
+  group_by(distance, depth) %>% 
+  reframe(mean = mean(max_temp))
+
+ggplot(data = burn_temps_avg,
+       aes(x = distance,
+           y = mean,
+           color = depth)) +
+  geom_point() +
+  ylim(0,350) +
+  theme_minimal()
+```
+
+## burn temps by edge
+```{r}
+
 ```
 
