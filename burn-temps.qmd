@@ -3,8 +3,11 @@ title: "burn-temps"
 format: html
 editor: visual
 ---
+
 # set-up
+
 ## reading in packages and data
+
 ```{r}
 #| message: false
 # general use
@@ -29,8 +32,10 @@ library(modelsummary)
 ```
 
 ## burn temp by depth & dist
+
 ```{r}
-burn_temps <- read_xlsx("Burn Temps.xlsx")
+burn_temps <- read_xlsx(path = here("data", 
+                        "Burn Temps.xlsx"))
 
 # cleaning up data
 burn_temps_clean <- burn_temps %>% clean_names() %>%
@@ -48,9 +53,3 @@ ggplot(data = burn_temps_avg,
   ylim(0,350) +
   theme_minimal()
 ```
-
-## burn temps by edge
-```{r}
-
-```
-

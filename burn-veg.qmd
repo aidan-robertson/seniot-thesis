@@ -1,0 +1,60 @@
+---
+title: "burn-veg"
+format: html
+editor: visual
+---
+
+# set-up
+
+## reading in packages and data
+
+```{r}
+#| message: false
+# general use
+library(tidyverse)
+library(readxl)
+library(here)
+library(janitor)
+
+# visualizing pairs
+library(GGally)
+
+# model selection
+library(MuMIn)
+
+# model predictions
+library(ggeffects)
+
+# model tables
+library(gtsummary)
+library(flextable)
+library(modelsummary)
+```
+
+```{r}
+burn_veg <- read_xlsx(path = here("data", 
+                        "burn.xlsx"),
+                         sheet = "burn_percent_cover") %>%
+  clean_names() %>% 
+  rename(subplot = unlisted_lagoon_transect_name_number) %>% 
+  select(subplot, sum_of_native_cover, sum_of_non_native_cover, sum_of_thatch, bare_ground) %>% 
+ pivot_longer(cols = c(sum_of_native_cover, sum_of_non_native_cover, sum_of_thatch, bare_ground)) %>% 
+  rename(percent_cover = value,
+         veg_type = name) %>% 
+  group_by(subplot, veg_type)
+
+burn_veg_avg <- burn_veg %>% 
+  reframe(mean = mean(percent_cover)) %>% 
+  mutate(veg_type = fct_relevel(veg_type, "sum_of_native_cover", "sum_of_non_native_cover", "sum_of_thatch", "bare_ground"))
+  
+
+ggplot(data = burn_veg_avg,
+       aes(x = subplot,
+           y = mean,
+           fill = veg_type)) +
+       geom_bar(stat = "identity",
+                position = position_dodge()) +
+  theme_minimal() + 
+  scale_fill_manual(values = c("#ff924c", "#1982c4", "#8ac926", "#E936A7"))
+
+```
