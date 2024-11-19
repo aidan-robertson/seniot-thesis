@@ -1,5 +1,5 @@
 ---
-title: "burn-veg"
+title: "clethodim-veg"
 format: html
 editor: visual
 ---
@@ -29,9 +29,9 @@ library(modelsummary)
 
 ## cleaning data
 ```{r}
-burn_veg <- read_xlsx(path = here("data", 
-                        "burn.xlsx"),
-                         sheet = "burn_percent_cover") %>% 
+clethodim_veg <- read_xlsx(path = here("data", 
+                        "clethodim.xlsx"),
+                         sheet = "clethodim_percent_cover") %>% 
   clean_names() %>% 
   rename(subplot = unlisted_lagoon_transect_name_number) %>% 
   select(subplot, sum_of_native_cover, sum_of_non_native_cover, sum_of_thatch, bare_ground) %>% 
@@ -45,18 +45,18 @@ burn_veg <- read_xlsx(path = here("data",
     veg_type == "sum_of_thatch" ~ "Thatch",
     veg_type == "bare_ground" ~ "Bare Ground"),
     subplot = case_when(
-      subplot == "Burn A" ~ "High Seed Rate",
-      subplot == "Burn B" ~ "Low Seed Rate",
-      subplot == "Burn C" ~ "No Seed"))
+      subplot == "Clethodim A" ~ "High Seed Rate",
+      subplot == "Clethodim C" ~ "Low Seed Rate",
+      subplot == "Clethodim B" ~ "No Seed"))
 
-burn_veg_avg <- burn_veg %>% 
+clethodim_veg_avg <- clethodim_veg %>% 
   reframe(mean = mean(percent_cover)) %>% 
   mutate(veg_type = fct_relevel(veg_type, "Native", "Non-Native", "Thatch", "Bare Ground"))
 ```
 
 ## bar chart
 ```{r}
-ggplot(data = burn_veg_avg,
+ggplot(data = clethodim_veg_avg,
        aes(x = subplot,
            y = mean,
            fill = veg_type)) +
@@ -67,7 +67,6 @@ ggplot(data = burn_veg_avg,
    labs(x = "Subplot",
         y = "Percent Cover",
         fill = "Vegetation",
-        title = "Pre-Burn Vegetation Cover") +
+        title = "Pre-Clethodim Vegetation Cover") +
   ylim(0,100)
 ```
-
