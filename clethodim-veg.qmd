@@ -45,9 +45,9 @@ clethodim_veg <- read_xlsx(path = here("data",
     veg_type == "sum_of_thatch" ~ "Thatch",
     veg_type == "bare_ground" ~ "Bare Ground"),
     subplot = case_when(
-      subplot == "Clethodim A" ~ "High Seed Rate",
+      subplot == "Clethodim B" ~ "High Seed Rate",
       subplot == "Clethodim C" ~ "Low Seed Rate",
-      subplot == "Clethodim B" ~ "No Seed"))
+      subplot == "Clethodim A" ~ "No Seed"))
 
 clethodim_veg_avg <- clethodim_veg %>% 
   reframe(mean = mean(percent_cover)) %>% 
