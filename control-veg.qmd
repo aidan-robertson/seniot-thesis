@@ -66,9 +66,54 @@ ggplot(data = control_veg_avg,
                 position = position_dodge()) +
   theme_minimal() + 
   scale_fill_manual(values = c("#8ac926", "#c61a09", "#fce205", "#5097a4")) +
-   labs(x = "Subplot",
+   labs(x = "Seeding Treatment",
         y = "Percent Cover",
         fill = "Vegetation",
         title = "Control Pre-Seeding Vegetation Cover") +
   ylim(0,100)
 ```
+## data cleaning, no weeding
+```{r}
+control_veg_not_weeded <- read_xlsx(path = here("data", 
+                        "control.xlsx"),
+                         sheet = "control_percent_cover") %>% 
+  clean_names() %>% 
+  rename(subplot = unlisted_lagoon_transect_name_number) %>% 
+  select(subplot, sum_of_native_cover, sum_of_non_native_cover, sum_of_thatch, bare_ground) %>% 
+ pivot_longer(cols = c(sum_of_native_cover, sum_of_non_native_cover, sum_of_thatch, bare_ground)) %>% 
+  rename(percent_cover = value,
+         veg_type = name) %>% 
+  filter(!(subplot %in% c("Control A", "Control NW"))) %>% 
+  group_by(subplot, veg_type) %>% 
+ mutate(veg_type = case_when(
+    veg_type == "sum_of_native_cover" ~ "Native",
+    veg_type == "sum_of_non_native_cover" ~ "Non-Native",
+    veg_type == "sum_of_thatch" ~ "Thatch",
+    veg_type == "bare_ground" ~ "Bare Ground"),
+    subplot = case_when(
+      subplot == "Control NE" ~ "High Seed Rate",
+      subplot == "Control SW" ~ "Low Seed Rate",
+      subplot == "Control SE" ~ "No Seed"))
+
+control_veg_not_weeded_avg <- control_veg_not_weeded %>% 
+  reframe(mean = mean(percent_cover)) %>% 
+  mutate(veg_type = fct_relevel(veg_type, "Native", "Non-Native", "Thatch", "Bare Ground"))
+```
+
+## bar chart, no weeding
+```{r}
+ggplot(data = control_veg_not_weeded_avg,
+       aes(x = subplot,
+           y = mean,
+           fill = veg_type)) +
+       geom_bar(stat = "identity",
+                position = position_dodge()) +
+  theme_minimal() + 
+  scale_fill_manual(values = c("#8ac926", "#c61a09", "#fce205", "#5097a4")) +
+   labs(x = "Seeding Treatment",
+        y = "Percent Cover",
+        fill = "Vegetation",
+        title = "Control Pre-Seeding Vegetation Cover") +
+  ylim(0,100)
+```
+

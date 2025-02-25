@@ -64,9 +64,9 @@ ggplot(data = clethodim_veg_avg,
                 position = position_dodge()) +
   theme_minimal() + 
   scale_fill_manual(values = c("#8ac926", "#c61a09", "#fce205", "#5097a4")) +
-   labs(x = "Subplot",
+   labs(x = "Seeding Treatment",
         y = "Percent Cover",
         fill = "Vegetation",
-        title = "Pre-Clethodim Vegetation Cover") +
+        title = "Pre-Clethodim-Seeding Vegetation Cover") +
   ylim(0,100)
 ```
