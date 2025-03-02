@@ -3,7 +3,9 @@ title: "burn-veg"
 format: html
 editor: visual
 ---
+
 ## reading in packages and data
+
 ```{r}
 #| message: false
 # general use
@@ -28,6 +30,7 @@ library(modelsummary)
 ```
 
 ## cleaning data
+
 ```{r}
 burn_veg <- read_xlsx(path = here("data", 
                         "burn.xlsx"),
@@ -55,6 +58,7 @@ burn_veg_avg <- burn_veg %>%
 ```
 
 ## bar chart
+
 ```{r}
 ggplot(data = burn_veg_avg,
        aes(x = subplot,
@@ -70,4 +74,3 @@ ggplot(data = burn_veg_avg,
         title = "Pre-Burn-Seeding Vegetation Cover") +
   ylim(0,100)
 ```
-

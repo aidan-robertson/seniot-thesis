@@ -43,13 +43,19 @@ burn_temps_clean <- burn_temps %>% clean_names() %>%
 
 burn_temps_avg <- burn_temps_clean %>%
   group_by(distance, depth) %>% 
-  reframe(mean = mean(max_temp))
+  reframe(mean = mean(max_temp)) %>% 
+  mutate(depth = fct_relevel(depth, "surface", "sub-surface"))
 
 ggplot(data = burn_temps_avg,
        aes(x = distance,
            y = mean,
            color = depth)) +
-  geom_point() +
+  geom_point(size = 3) +
   ylim(0,350) +
-  theme_minimal()
+  theme_minimal() +
+  scale_color_manual(values = c("#c61a09", "#8ac926")) +
+  labs(x = "Distance from Edge",
+        y = "Temperature (C)",
+        color = "Depth",
+        title = "Average Fire Temperature from Edge")
 ```

@@ -3,7 +3,9 @@ title: "clethodim-veg"
 format: html
 editor: visual
 ---
+
 ## reading in packages and data
+
 ```{r}
 #| message: false
 # general use
@@ -28,6 +30,7 @@ library(modelsummary)
 ```
 
 ## cleaning data
+
 ```{r}
 clethodim_veg <- read_xlsx(path = here("data", 
                         "clethodim.xlsx"),
@@ -55,6 +58,7 @@ clethodim_veg_avg <- clethodim_veg %>%
 ```
 
 ## bar chart
+
 ```{r}
 ggplot(data = clethodim_veg_avg,
        aes(x = subplot,

@@ -74,3 +74,25 @@ ggplot(data = thatch_veg_avg,
         title = "Thatch Removal Pre-Seeding Vegetation Cover") +
   ylim(0,100)
 ```
+
+```{r}
+thatch_nn_species <- read_xlsx(path = here("data", 
+                        "thatch.xlsx"),
+                         sheet = "nonnative_plants") %>% 
+   clean_names() %>% 
+  rename(percent_cover = non_native_species_percent_cover,
+         species = non_native_species) %>% 
+  group_by(species) %>% 
+  mutate(species = case_when(
+    species == "Lysimachia_arvensis" ~ "LYAR",
+    species == "Bromus_diandrus" ~ "BRDI",
+    species == "Festuca_myuros" ~ "FEMY"))
+```
+
+```{r}
+ggplot(data = thatch_nn_species,
+       aes(x = species,
+           y = percent_cover)) +
+  geom_boxplot()
+```
+
