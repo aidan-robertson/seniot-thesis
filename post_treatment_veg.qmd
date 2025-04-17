@@ -20,9 +20,12 @@ library(rstatix)
 veg_data <- read_xlsx(path = here("data", 
                         "post_treatment_veg_all.xlsx"),
                          sheet = "CCBER_VegMonitoring_Quadrat_4")
+
+burn_temps <- read_xlsx(path = here("data", 
+                        "Burn Temps.xlsx"))
 ```
 
-## data cleaning
+## veg data cleaning
 ```{r}
 veg_data_clean <- veg_data %>% 
   clean_names() %>% 
@@ -61,6 +64,18 @@ veg_data_clean <- veg_data %>%
              treatment == "Clethodim-Low" ~ "Low",
              treatment == "Clethodim-High" ~ "High")) %>% 
   mutate(weeding= fct_relevel(weeding, "Control", "Thatch Removal", "Herbicide", "Burn"))
+```
+
+## burn dc
+```{r}
+# cleaning up data
+burn_temps_clean <- burn_temps %>% clean_names() %>%
+  rename(distance = distance_from_edge_m)
+
+burn_temps_avg <- burn_temps_clean %>%
+  group_by(distance, edge, depth) %>% 
+  reframe(mean = mean(max_temp)) %>% 
+  mutate(depth = fct_relevel(depth, "surface", "sub-surface"))
 ```
 
 
@@ -257,7 +272,7 @@ effectsize::eta_squared(native_weeding_density_anova)
 ## nonnative density and weeding plot
 ```{r}
 ggplot(veg_data_clean) +
-  aes(x = weeding, y = nonnative_cover, color = weeding) +
+  aes(x = weeding, y = nonnative_count, color = weeding) +
   geom_boxplot() +
   geom_jitter(width = 0,
               height = 0,
@@ -265,7 +280,7 @@ ggplot(veg_data_clean) +
   theme_minimal() +
   scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
   labs(x = "Weeding",
-       y = "Non-native Cover",
+       y = "Non-native Density",
        color = "Weeding")
 ```
 
@@ -273,45 +288,45 @@ ggplot(veg_data_clean) +
 ```{r}
 ## normal distribution
 ggplot(veg_data_clean) +
-  aes(x = nonnative_cover) +
+  aes(x = nonnative_count) +
   geom_histogram(bins = 9) +
   facet_wrap(~weeding,
              scales = "free")
 
 ## qqplot
 ggplot(data = veg_data_clean,
-       aes(sample = nonnative_cover)) +
+       aes(sample = nonnative_count)) +
   geom_qq_line() +
   geom_qq() +
   facet_wrap(~weeding,
              scales = "free")
 
 ## shapiro-wilks
-burn_nonnative_sw <- veg_data_clean %>% 
+burn_nonnative_density_sw <- veg_data_clean %>% 
   filter(weeding == "Burn") %>% 
-  pull(nonnative_cover)
+  pull(nonnative_count)
 
-shapiro.test(burn_nonnative_sw)
+shapiro.test(burn_nonnative_density_sw)
 
 ## equal variances
 veg_data_clean %>% 
   group_by(weeding) %>% 
-  reframe (var = var(nonnative_cover))
+  reframe (var = var(nonnative_count))
 
-leveneTest(nonnative_cover ~ weeding,
+leveneTest(nonnative_count ~ weeding,
            data = veg_data_clean)
 
 ## ANOVA
-nonnative_weeding_anova <- aov(nonnative_cover ~ weeding,
+nonnative_weeding_density_anova <- aov(nonnative_count ~ weeding,
                             data = veg_data_clean)
 
-summary(nonnative_weeding_anova)
+summary(nonnative_weeding_density_anova)
 
 ## Tukey-HSD
-TukeyHSD(nonnative_weeding_anova)
+TukeyHSD(nonnative_weeding_density_anova)
 
 ## effect size
-effectsize::eta_squared(nonnative_weeding_anova)
+effectsize::eta_squared(nonnative_weeding_density_anova)
 
 # We found a large effect (η2 = 0.47) of weeding treatments on native cover (one-way ANOVA, F(3, 92) = 27.36, p < 0.001, ⍺ = 0.05). On average, non-native cover in the burn and herbicide plots was lower than cover in thatch removal (herbicide: p < 0.001, burn: p < 0.001) and control (herbicide: p <0.001, burn: p < 0.001) plots.
 ```

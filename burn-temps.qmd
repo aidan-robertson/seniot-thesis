@@ -15,47 +15,73 @@ library(tidyverse)
 library(readxl)
 library(here)
 library(janitor)
+library(car)
+library(effectsize)
+library(rstatix)
 
-# visualizing pairs
-library(GGally)
+burn_temps <- read_xlsx(path = here("data", 
+                        "Burn Temps.xlsx"))
 
-# model selection
-library(MuMIn)
+fuel_depth <- read_xlsx(path = here("data",
+                          "fuel depth.xlsx"))
+```
 
-# model predictions
-library(ggeffects)
+## block and temperature
+```{r}
+burn_temps_block <- burn_temps %>% clean_names() %>% 
+  rename(distance = distance_from_edge_m,
+         block = edge) %>% 
+  mutate(block = case_when(
+             block == "east" ~ "No Seed",
+             block == "west" ~ "No Seed",
+             block == "north" ~ "Low Seed",
+             block == "south" ~ "High Seed")) %>% 
+  filter(depth == "sub-surface")
 
-# model tables
-library(gtsummary)
-library(flextable)
-library(modelsummary)
+ggplot(data = burn_temps_block,
+       aes(x = block,
+           y = max_temp,
+           color = block)) +
+  geom_boxplot() +
+  theme_minimal()
+```
+
+## depth and temp
+```{r}
+fuel_depth_clean <- fuel_depth %>% clean_names() %>% 
+  rename(block = edge,
+         distance = meters_from_edge) %>% 
+  mutate(block = case_when(
+             block == "east" ~ "No Seed",
+             block == "west" ~ "No Seed",
+             block == "north" ~ "Low Seed",
+             block == "south" ~ "High Seed"))
+
+fuel_burn_temp <- merge(fuel_depth_clean, burn_temps_block, by="block, distance")
 ```
 
 ## burn temp by depth & dist
 
 ```{r}
-burn_temps <- read_xlsx(path = here("data", 
-                        "Burn Temps.xlsx"))
-
 # cleaning up data
 burn_temps_clean <- burn_temps %>% clean_names() %>%
   rename(distance = distance_from_edge_m)
 
 burn_temps_avg <- burn_temps_clean %>%
-  group_by(distance, depth) %>% 
+  group_by(edge, depth) %>% 
   reframe(mean = mean(max_temp)) %>% 
   mutate(depth = fct_relevel(depth, "surface", "sub-surface"))
 
 ggplot(data = burn_temps_avg,
-       aes(x = distance,
+       aes(x = edge,
            y = mean,
            color = depth)) +
   geom_point(size = 3) +
   ylim(0,350) +
   theme_minimal() +
   scale_color_manual(values = c("#c61a09", "#8ac926")) +
-  labs(x = "Distance from Edge",
+  labs(x = "Edge",
         y = "Temperature (C)",
         color = "Depth",
-        title = "Average Fire Temperature from Edge")
+        title = "Average Fire Temperature Each Side")
 ```
