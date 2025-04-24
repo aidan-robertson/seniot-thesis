@@ -1,0 +1,63 @@
+---
+title: "seeded_wfs"
+format: html
+editor: visual
+---
+## reading in packages & data
+```{r}
+#| message: false
+# general use
+library(tidyverse)
+library(readxl)
+library(here)
+library(janitor)
+library(car)
+library(effectsize)
+library(rstatix)
+library(multcomp)
+
+density_seeded <- read_xlsx(path = here("data", 
+                        "density_count veg data.xlsx"))
+```
+
+## group up
+```{r}
+density_seeded_clean <- density_seeded %>% 
+  group_by(species, weeding, seeding)
+```
+
+# plottin
+```{r}
+ggplot(density_seeded_clean) +
+  aes(x = species , y = count, color = seeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  #facet_wrap(vars(species)) +
+  scale_color_manual(values = c("#FFC567", "#67C0AC", "#B660CD"))
+```
+
+## CAME
+```{r}
+CAME <- density_seeded_clean %>% 
+  filter(species == "CAME")
+
+CAME_aov <- aov(count ~ seeding,
+                data = CAME)
+plot (CAME_aov) ## yea super not normal
+
+kruskal.test(count ~ seeding,
+             data = CAME)
+
+dunn_test(count ~ seeding,
+             data = CAME) # says seeding isn't a column? i need to move onnnn from this omg
+
+kruskal_effsize(count ~ seeding,
+             data = CAME)
+```
+
+
