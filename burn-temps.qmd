@@ -30,13 +30,15 @@ fuel_depth <- read_xlsx(path = here("data",
 ```{r}
 burn_temps_block <- burn_temps %>% clean_names() %>% 
   rename(distance = distance_from_edge_m,
-         block = edge) %>% 
+         block = edge,
+         tag_depth = depth) %>% 
   mutate(block = case_when(
              block == "east" ~ "No Seed",
              block == "west" ~ "No Seed",
              block == "north" ~ "Low Seed",
              block == "south" ~ "High Seed")) %>% 
-  filter(depth == "sub-surface")
+  filter(tag_depth == "sub-surface") %>% 
+  mutate(block = fct_relevel(block, "No Seed", "Low Seed", "High Seed"))
 
 ggplot(data = burn_temps_block,
        aes(x = block,
@@ -46,19 +48,85 @@ ggplot(data = burn_temps_block,
   theme_minimal()
 ```
 
-## depth and temp
+## block and & depth and temp
 ```{r}
 fuel_depth_clean <- fuel_depth %>% clean_names() %>% 
   rename(block = edge,
-         distance = meters_from_edge) %>% 
+         distance = meters_from_edge,
+         fuel_depth = depth) %>% 
+  select(block, distance, fuel_depth) %>% 
   mutate(block = case_when(
              block == "east" ~ "No Seed",
              block == "west" ~ "No Seed",
              block == "north" ~ "Low Seed",
-             block == "south" ~ "High Seed"))
+             block == "south" ~ "High Seed")) %>% 
+  mutate(block = fct_relevel(block, "No Seed", "Low Seed", "High Seed"))
 
-fuel_burn_temp <- merge(fuel_depth_clean, burn_temps_block, by="block, distance")
+fuel_burn_temp <- merge(fuel_depth_clean, burn_temps_block, by=c("block","distance"))
+
+ggplot(fuel_burn_temp,
+       aes(x = block,
+           y = fuel_depth,
+           color = block)) +
+  geom_boxplot() +
+  theme_minimal()
+
+ggplot(fuel_burn_temp,
+       aes(x = fuel_depth,
+           y = max_temp)) +
+  geom_point() +
+  theme_minimal()
 ```
+
+
+
+## temp & density
+```{r}
+veg_data <- read_xlsx(path = here("data", 
+                        "post_treatment_veg_all.xlsx"),
+                         sheet = "CCBER_VegMonitoring_Quadrat_4")
+
+veg_data_clean <- veg_data %>% 
+  clean_names() %>% 
+  select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, transect_distance_of_quadrat, count_of_native_species, sum_of_native_cover, sum_of_non_native_cover, count_of_non_native_species, sum_of_unknown_cover, sum_of_thatch, bare_ground, sum_of_all_cover) %>% 
+  rename(treatment = unlisted_lagoon_transect_name_number,
+         native_count = count_of_native_species,
+         native_cover = sum_of_native_cover,
+         nonnative_count = count_of_non_native_species,
+         nonnative_cover = sum_of_non_native_cover,
+         thatch_cover = sum_of_thatch) %>% 
+  mutate(total_cover = sum_of_all_cover - sum_of_unknown_cover) %>% 
+  mutate(weeding = case_when(
+             treatment == "Thatch-None" ~ "Thatch Removal",
+             treatment == "Thatch-Low" ~ "Thatch Removal",
+             treatment == "Thatch-High" ~ "Thatch Removal",
+             treatment == "Control-None" ~ "Control",
+             treatment == "Control-Low" ~ "Control",
+             treatment == "Control-High" ~ "Control",
+             treatment == "Burn-None" ~ "Burn",
+             treatment == "Burn-Low" ~ "Burn",
+             treatment == "Burn-High" ~ "Burn",
+             treatment == "Clethodim-None" ~ "Herbicide",
+             treatment == "Clethodim-Low" ~ "Herbicide",
+             treatment == "Clethodim-High" ~ "Herbicide"),
+         seeding = case_when(
+             treatment == "Thatch-None" ~ "None",
+             treatment == "Thatch-Low" ~ "Low",
+             treatment == "Thatch-High" ~ "High",
+             treatment == "Control-None" ~ "None",
+             treatment == "Control-Low" ~ "Low",
+             treatment == "Control-High" ~ "High",
+             treatment == "Burn-None" ~ "No Seed",
+             treatment == "Burn-Low" ~ "Low Seed",
+             treatment == "Burn-High" ~ "High Seed",
+             treatment == "Clethodim-None" ~ "None",
+             treatment == "Clethodim-Low" ~ "Low",
+             treatment == "Clethodim-High" ~ "High")) %>% 
+  filter(weeding == "Burn")
+
+
+```
+
 
 ## burn temp by depth & dist
 
