@@ -27,7 +27,7 @@ veg_data <- read_xlsx(path = here("data",
 ```{r}
 veg_data_clean <- veg_data %>% 
   clean_names() %>% 
-  select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, transect_distance_of_quadrat, count_of_native_species, sum_of_native_cover, sum_of_non_native_cover, count_of_non_native_species, sum_of_unknown_cover, sum_of_thatch, bare_ground, sum_of_all_cover) %>% 
+# select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, transect_distance_of_quadrat, count_of_native_species, sum_of_native_cover, sum_of_non_native_cover, count_of_non_native_species, sum_of_unknown_cover, sum_of_thatch, bare_ground, sum_of_all_cover) %>% 
   rename(treatment = unlisted_lagoon_transect_name_number,
          native_count = count_of_native_species,
          native_cover = sum_of_native_cover,
@@ -65,7 +65,7 @@ veg_data_clean <- veg_data %>%
          seeding = fct_relevel(seeding, "None", "Low", "High"))
 ```
 
-## native cover and weeding plot
+## cover/density weeding plots
 ```{r}
 ggplot(veg_data_clean) +
   aes(x = weeding, y = nonnative_count, color = weeding) +
@@ -83,7 +83,7 @@ ggplot(veg_data_clean) +
        title = "Non-Native Density by Weeding Treatment")
 ```
 
-## cover/density and SEEDING
+## cover/density seeding or seeding/weeding plots
 ```{r}
 ggplot(veg_data_clean) +
   aes(x = weeding, y = native_count, color = seeding) +
@@ -101,6 +101,9 @@ ggplot(veg_data_clean) +
        title = "Native Density by Weeding and Seeding Treatments")
 ```
 
+# using * for interaction, but do we care? should i do + instead?
+
+# stats for native cover - OKAY???
 ```{r}
 ## normal dist
 hist(veg_data_clean $ native_cover)
@@ -119,17 +122,25 @@ leveneTest(native_cover ~ weeding * seeding, veg_data_clean)
 
 oneway.test(native_cover ~  weeding * seeding,
   data = veg_data_clean,
-  var.equal = FALSE # assuming unequal variances
-)
+  var.equal = FALSE) # assuming unequal variances
 
 ## trying to do a posthoc for welch?????
 games_howell_test(data = veg_data_clean, 
                   formula = native_cover ~  weeding * seeding, 
                   conf.level = 0.95, 
-                  detailed = FALSE)
+                  detailed = FALSE) 
+# that does not work ^
+
+## if i proceed with anova anyway -->
+
+TukeyHSD(nativecover_aov)
+
+## effect size
+effectsize::eta_squared(nativecover_aov)
+
 ```
 
-
+# anova stats for nonnative cover - OKAY???
 ```{r}
 ## normal dist
 hist(veg_data_clean $ nonnative_cover)
@@ -146,11 +157,100 @@ leveneTest(nonnative_cover ~ weeding * seeding, veg_data_clean)
 
 # significant, variances are not equal, p = 0.0009
 
-TukeyHSD(nonnativecover_aov, conf.level = 0.95)
+## effect size
+effectsize::eta_squared(nonnativecover_aov)
+
+## post-hoc Tukey
+TukeyHSD(nonnativecover_aov)
 
 ### IS THIS WRONG TO DO WITH WEEDING AND SEEDING VARIABLES? THERE ARE SO MANY OUTPUTS? DO I JUST FIND EACH SIGNIFICANT ONE MANUALLY?
 
 ```
+
+# kruskal wallis for nonative cover
+```{r}
+kruskal.test(nonnative_cover ~ seeding, # formula
+             data = veg_data_clean) # data
+
+# seeding - 
+
+#can I do kruskal wallis with two variables?
+
+dunn_test(nonnative_cover ~ seeding, # formula
+          data = veg_data_clean) # data
+
+kruskal_effsize(nonnative_cover ~ weeding, # formula
+                data = veg_data_clean) # data
+
+# herbicide and burn have significantly different nonnative covers compared to control and thatch-removal, but not from each other, large effect size of 0.74. seeding has no significant effect on nn cover 
+
+# We found a difference in nonnative cover between weeding treatments (insert KW info here). There was a large effect of weeding on nonnative cover (n^2 = 0.74), with burn and herbicide reducing nonnative cover more than control and thatch-removal (insert Dunn’s post-hoc info here).
+```
+
+# stats for native density - GOOD
+```{r}
+hist(veg_data_clean $ native_count)
+
+nativedensity_aov <- aov(native_count ~ weeding * seeding, data = veg_data_clean)
+
+summary(nativedensity_aov)
+
+plot(nativedensity_aov)
+
+# looks normal! scale-location is  a bit wonky but mostly okay
+
+leveneTest(native_count ~ weeding * seeding, veg_data_clean)
+
+# Variances are equal!
+
+# I can use my ANOVA
+
+## Tukey-HSD
+TukeyHSD(nativedensity_aov)
+
+# ^ does this makes sense to do when it gives back EACH combination, or is there a way to group to compare just weeding and just seeding to each other. I ended up looking at the ANOVA p stats for weeding and seeding sep?
+
+## effect size
+effectsize::eta_squared(nativedensity_aov)
+
+
+# We found a significant, large effect (η2 = 0.73) of weeding treatments (F(84, 3) = 77.10, p < 0.001, ⍺ = 0.05) on native density 
+
+# There was a significant, small effect (η2 = 0.15) of seeding treatments (F(84, 2) = 7.13, p = 0.001, , ⍺ = 0.05) on native density.
+
+# The controlled burn (M = appears to have the greatest effect in increasing native density
+# No seeding appears to have the least effect in increasing native density. There does not appear to be a significant difference between high and low seeding rate treatments, indicating that any amount of native seed applied to the landscape is important in increasing native density.
+```
+
+# stats for nonnative density - GOOD
+```{r}
+hist(veg_data_clean $ nonnative_count)
+
+nonnativedensity_aov <- aov(nonnative_count ~ weeding * seeding, data = veg_data_clean)
+
+summary(nonnativedensity_aov)
+
+plot(nonnativedensity_aov)
+
+# SOOOO NORMAL
+
+leveneTest(native_count ~ weeding * seeding, veg_data_clean)
+
+# Variances are equal!
+
+# I can use my ANOVA!
+
+## Tukey-HSD
+TukeyHSD(nonnativedensity_aov)
+
+## effect size
+effectsize::eta_squared(nonnativedensity_aov)
+
+```
+
+
+
+
 
 
 ## native cover and weeding statistical tests
@@ -197,6 +297,7 @@ TukeyHSD(native_weeding_anova)
 
 ## effect size
 effectsize::eta_squared(native_weeding_anova)
+
 
 
 
