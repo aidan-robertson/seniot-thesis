@@ -27,6 +27,7 @@ fuel_depth <- read_xlsx(path = here("data",
 ```
 
 ## block and temperature
+
 ```{r}
 burn_temps_block <- burn_temps %>% clean_names() %>% 
   rename(distance = distance_from_edge_m,
@@ -49,6 +50,7 @@ ggplot(data = burn_temps_block,
 ```
 
 ## block and & depth and temp
+
 ```{r}
 fuel_depth_clean <- fuel_depth %>% clean_names() %>% 
   rename(block = edge,
@@ -78,9 +80,8 @@ ggplot(fuel_burn_temp,
   theme_minimal()
 ```
 
-
-
 ## temp & density
+
 ```{r}
 veg_data <- read_xlsx(path = here("data", 
                         "post_treatment_veg_all.xlsx"),
@@ -126,7 +127,6 @@ veg_data_clean <- veg_data %>%
 
 
 ```
-
 
 ## burn temp by depth & dist
 

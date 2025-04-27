@@ -18,18 +18,24 @@ library(multcomp)
 
 density_seeded <- read_xlsx(path = here("data", 
                         "density_count veg data.xlsx"))
+
+subplot_area <- read_xlsx(path = here("data", 
+                        "subplot size.xlsx"),
+                        sheet = "Sheet2")
 ```
 
 ## group up
 ```{r}
 density_seeded_clean <- density_seeded %>% 
   group_by(species, weeding, seeding)
+
+subplot_area_clean <- subplot_area %>% clean_names() %>%  group_by(weeding, seeding) %>% filter(! seeding =="none")
 ```
 
 # plottin
 ```{r}
 ggplot(density_seeded_clean) +
-  aes(x = species , y = count, color = seeding) +
+  aes(x = weeding , y = count, color = weeding) +
   geom_boxplot() +
  geom_point(position=position_jitterdodge(
    jitter.width = 0,
@@ -37,27 +43,46 @@ ggplot(density_seeded_clean) +
     seed = NULL),
             alpha = 0.3) +
   theme_minimal() +
-  #facet_wrap(vars(species)) +
-  scale_color_manual(values = c("#FFC567", "#67C0AC", "#B660CD"))
+ facet_wrap(vars(species)) 
+ # scale_color_manual(values = c("#FFC567", "#67C0AC", "#B660CD"))
 ```
 
 ## CAME
 ```{r}
 CAME <- density_seeded_clean %>% 
-  filter(species == "CAME")
+  filter(species == "CAME") %>% 
+  filter(!seeding == "none")
 
-CAME_aov <- aov(count ~ seeding,
+CAME_aov <- aov(sqrt(count) ~ seeding * weeding,
                 data = CAME)
 plot (CAME_aov) ## yea super not normal
 
-kruskal.test(count ~ seeding,
-             data = CAME)
+TukeyHSD(CAME_aov)
 
-dunn_test(count ~ seeding,
-             data = CAME) # says seeding isn't a column? i need to move onnnn from this omg
+#not a glm, just filtered out no seed
 
-kruskal_effsize(count ~ seeding,
-             data = CAME)
 ```
 
+## success rate
+```{r}
+seededmeans <- density_seeded_clean %>% 
+  reframe(mean = mean(count)) %>% 
+  filter(!seeding == "none") %>% 
+  mutate(weeding = case_when(
+             weeding == "thatch" ~ "thatch removal",
+             weeding == "clethodim" ~ "herbicide",
+             weeding == "burn" ~ "burn",
+             weeding == "control" ~ "control")) %>% 
+  rename(averagecount = mean)
+
+successrate <- merge(seededmeans, subplot_area_clean, by=c("seeding","weeding", "species")) %>% 
+  mutate(success_rate = (averagecount/seeds_meter)*100)
+```
+
+```{r}
+ggplot(data = successrate) +
+  aes(x = weeding, y = success_rate, color = weeding) +
+  geom_boxplot() +
+  facet_wrap(vars(species)) + theme_minimal()
+```
 

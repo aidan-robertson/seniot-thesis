@@ -68,7 +68,7 @@ veg_data_clean <- veg_data %>%
 ## cover/density weeding plots
 ```{r}
 ggplot(veg_data_clean) +
-  aes(x = weeding, y = nonnative_count, color = weeding) +
+  aes(x = weeding, y = native_cover, color = weeding) +
   geom_boxplot() +
  geom_point(position=position_jitterdodge(
    jitter.width = 0,
@@ -76,11 +76,12 @@ ggplot(veg_data_clean) +
     seed = NULL),
             alpha = 0.3) +
   theme_minimal() +
+  ylim(0,120) +
   scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
-  labs(x = "Weeding",
-       y = "Count",
-       color = "Weeding",
-       title = "Non-Native Density by Weeding Treatment")
+  labs(x = "Treatment",
+       y = "Cover (%)",
+       color = "Treatment")
+       #title = "Non-Native Density by Weeding Treatment") 
 ```
 
 ## cover/density seeding or seeding/weeding plots
@@ -108,15 +109,19 @@ ggplot(veg_data_clean) +
 ## normal dist
 hist(veg_data_clean $ native_cover)
 
-nativecover_aov <- aov(native_cover ~ weeding * seeding, data = veg_data_clean)
+nativecover_aov <- aov(sqrt(native_cover) ~ weeding * seeding, data = veg_data_clean)
 
 summary(nativecover_aov)
 
 plot(nativecover_aov)
 
+cooksnativeaov <- cooks.distance(nativecover_aov)
+
+plot(cooksnativeaov)
+
 # this is fairly normal, now testing for equal variances
 
-leveneTest(native_cover ~ weeding * seeding, veg_data_clean)
+leveneTest(sqrt(native_cover) ~ weeding * seeding, veg_data_clean)
 
 # significant, variances are not equal, p = 0.02
 
@@ -145,15 +150,19 @@ effectsize::eta_squared(nativecover_aov)
 ## normal dist
 hist(veg_data_clean $ nonnative_cover)
 
-nonnativecover_aov <- aov(nonnative_cover ~ weeding * seeding, data = veg_data_clean)
+nonnativecover_aov <- aov(sqrt(nonnative_cover) ~ weeding * seeding, data = veg_data_clean)
 
 plot(nonnativecover_aov)
 
 summary(nonnativecover_aov)
 
+cooksnonnativeaov <- cooks.distance(nonnativecover_aov)
+
+plot(cooksnonnativeaov)
+
 ## seems normal-ish??? worried about scale-location plot, but qq and constant leverage seem okay
 
-leveneTest(nonnative_cover ~ weeding * seeding, veg_data_clean)
+leveneTest(sqrt(nonnative_cover) ~ weeding * seeding, veg_data_clean)
 
 # significant, variances are not equal, p = 0.0009
 
@@ -507,8 +516,23 @@ effectsize::eta_squared(nonnative_weeding_density_anova)
 ## thatch cover & natives
 ```{r}
 ggplot(veg_data_clean) +
+  aes(x = weeding, y = thatch_cover, color = weeding) +
+ geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  ylim(0,100) +
+  scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
+  labs(x = "Treatment",
+       y = "Cover (%)",
+       color = "Treatment")
+
+ggplot(veg_data_clean) +
   aes(x = thatch_cover, y = nonnative_cover, color = weeding) +
-  geom_point() 
+  geom_point()
 
 ## don't include burn in thatch - nonnativecover
 
