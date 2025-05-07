@@ -56,13 +56,7 @@ fuel_depth_clean <- fuel_depth %>% clean_names() %>%
   rename(block = edge,
          distance = meters_from_edge,
          fuel_depth = depth) %>% 
-  select(block, distance, fuel_depth) %>% 
-  mutate(block = case_when(
-             block == "east" ~ "No Seed",
-             block == "west" ~ "No Seed",
-             block == "north" ~ "Low Seed",
-             block == "south" ~ "High Seed")) %>% 
-  mutate(block = fct_relevel(block, "No Seed", "Low Seed", "High Seed"))
+  dplyr::select(block, distance, fuel_depth) 
 
 fuel_burn_temp <- merge(fuel_depth_clean, burn_temps_block, by=c("block","distance"))
 
@@ -147,9 +141,5 @@ ggplot(data = burn_temps_avg,
   geom_point(size = 3) +
   ylim(0,350) +
   theme_minimal() +
-  scale_color_manual(values = c("#c61a09", "#8ac926")) +
-  labs(x = "Edge",
-        y = "Temperature (C)",
-        color = "Depth",
-        title = "Average Fire Temperature Each Side")
+  scale_color_manual(values = c("#c61a09", "#8ac926")) 
 ```

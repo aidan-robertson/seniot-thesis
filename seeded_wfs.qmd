@@ -3,7 +3,9 @@ title: "seeded_wfs"
 format: html
 editor: visual
 ---
+
 ## reading in packages & data
+
 ```{r}
 #| message: false
 # general use
@@ -25,14 +27,21 @@ subplot_area <- read_xlsx(path = here("data",
 ```
 
 ## group up
+
 ```{r}
 density_seeded_clean <- density_seeded %>% 
   group_by(species, weeding, seeding)
 
-subplot_area_clean <- subplot_area %>% clean_names() %>%  group_by(weeding, seeding) %>% filter(! seeding =="none")
+subplot_area_clean <- subplot_area %>% clean_names() %>%  group_by(weeding, seeding) %>% filter(! seeding =="none") %>% 
+  mutate(weeding = case_when(
+             weeding == "thatch removal" ~ "Thatch Removal",
+             weeding == "herbicide" ~ "Herbicide",
+             weeding == "burn" ~ "Burn",
+             weeding == "control" ~ "Control"))
 ```
 
 # plottin
+
 ```{r}
 ggplot(density_seeded_clean) +
   aes(x = weeding , y = count, color = weeding) +
@@ -48,6 +57,7 @@ ggplot(density_seeded_clean) +
 ```
 
 ## CAME
+
 ```{r}
 CAME <- density_seeded_clean %>% 
   filter(species == "CAME") %>% 
@@ -64,25 +74,37 @@ TukeyHSD(CAME_aov)
 ```
 
 ## success rate
+
 ```{r}
 seededmeans <- density_seeded_clean %>% 
   reframe(mean = mean(count)) %>% 
   filter(!seeding == "none") %>% 
   mutate(weeding = case_when(
-             weeding == "thatch" ~ "thatch removal",
-             weeding == "clethodim" ~ "herbicide",
-             weeding == "burn" ~ "burn",
-             weeding == "control" ~ "control")) %>% 
+             weeding == "thatch" ~ "Thatch Removal",
+             weeding == "clethodim" ~ "Herbicide",
+             weeding == "burn" ~ "Burn",
+             weeding == "control" ~ "Control")) %>% 
   rename(averagecount = mean)
 
 successrate <- merge(seededmeans, subplot_area_clean, by=c("seeding","weeding", "species")) %>% 
-  mutate(success_rate = (averagecount/seeds_meter)*100)
+  mutate(success_rate = (averagecount/seeds_meter)*100) %>% 
+   mutate(weeding= fct_relevel(weeding, "Control", "Thatch Removal", "Herbicide", "Burn"),
+         seeding = fct_relevel(seeding, "low", "high"),
+         species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
+```
+
+```{r}
+
 ```
 
 ```{r}
 ggplot(data = successrate) +
   aes(x = weeding, y = success_rate, color = weeding) +
   geom_boxplot() +
-  facet_wrap(vars(species)) + theme_minimal()
+  facet_wrap(vars(species)) + theme_minimal() +
+    scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
+  labs(x = "Treatment",
+       y = "Success Rate",
+       color = "Treatment") +
+  theme(axis.text.x = element_text(angle = 30))
 ```
-

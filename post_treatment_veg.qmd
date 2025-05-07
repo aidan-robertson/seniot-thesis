@@ -5,7 +5,6 @@ editor: visual
 ---
 
 ## reading in packages & data
-
 ```{r}
 #| message: false
 # general use
@@ -27,7 +26,7 @@ veg_data <- read_xlsx(path = here("data",
 ```{r}
 veg_data_clean <- veg_data %>% 
   clean_names() %>% 
-# select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, transect_distance_of_quadrat, count_of_native_species, sum_of_native_cover, sum_of_non_native_cover, count_of_non_native_species, sum_of_unknown_cover, sum_of_thatch, bare_ground, sum_of_all_cover) %>% 
+dplyr::select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, transect_distance_of_quadrat, count_of_native_species, sum_of_native_cover, sum_of_non_native_cover, count_of_non_native_species, sum_of_unknown_cover, sum_of_thatch, bare_ground, sum_of_all_cover) %>% 
   rename(treatment = unlisted_lagoon_transect_name_number,
          native_count = count_of_native_species,
          native_cover = sum_of_native_cover,
@@ -83,6 +82,24 @@ ggplot(veg_data_clean) +
        color = "Treatment")
        #title = "Non-Native Density by Weeding Treatment") 
 ```
+
+# urs plots
+```{r}
+veg_data_urs <- veg_data_clean %>% filter(!weeding == "Control")
+
+ggplot(veg_data_urs) +
+  aes(x = weeding, y = nonnative_cover, color = weeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  ylim(0,100) +
+  scale_color_manual(values = c("#FF327C", "#00A9E6", "#F77600"))
+```
+
 
 ## cover/density seeding or seeding/weeding plots
 ```{r}
