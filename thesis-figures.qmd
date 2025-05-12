@@ -3,6 +3,7 @@ title: "Thesis Figures"
 format: html
 editor: visual
 ---
+
 # Packages
 ```{r}
 #| message: false
@@ -23,6 +24,10 @@ veg_data <- read_xlsx(path = here("data",
                         "post_treatment_veg_all.xlsx"),
                          sheet = "CCBER_VegMonitoring_Quadrat_4")
 
+seeded_cover <- read_xlsx(path = here("data",
+                          "post_treatment_veg_all.xlsx"),
+                         sheet = "native_plants_begin_0")
+
 burn_temps <- read_xlsx(path = here("data", 
                         "Burn Temps.xlsx"))
 
@@ -39,6 +44,7 @@ subplot_area <- read_xlsx(path = here("data",
 
 # Cleaning
 ```{r}
+# veg cover data, includes N, NN, thatch cover
 veg_data_clean <- veg_data %>% 
   clean_names() %>% 
 dplyr::select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, transect_distance_of_quadrat, count_of_native_species, sum_of_native_cover, sum_of_non_native_cover, count_of_non_native_species, sum_of_unknown_cover, sum_of_thatch, bare_ground, sum_of_all_cover) %>% 
@@ -78,19 +84,113 @@ dplyr::select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, 
   mutate(weeding= fct_relevel(weeding, "Control", "Thatch Removal", "Herbicide", "Burn"),
          seeding = fct_relevel(seeding, "None", "Low", "High"))
 
-density_seeded_clean <- density_seeded %>% 
-  group_by(species, weeding, seeding)
+# cover of 3 seeded species
+globaltreatments <- veg_data_clean %>% dplyr::select(global_id, weeding, seeding)
 
-subplot_area_clean <- subplot_area %>% clean_names() %>%  group_by(weeding, seeding) %>% filter(! seeding =="none") %>% 
+cameclean <- seeded_cover %>% clean_names() %>%
+  dplyr::select(native_species, native_species_percent_cover, parent_global_id) %>% 
+  rename(global_id = parent_global_id,
+         species = native_species,
+         cover = native_species_percent_cover) %>% 
+    mutate(species = case_when(
+    species == "Calandrinia_menziesii" ~ "CAME")) %>% 
+  filter(species == "CAME") 
+camemerge <- merge(cameclean, globaltreatments, by=c("global_id"), all = TRUE) %>% 
+  replace_na(list(cover = 0, species = "CAME"))
+
+phdiclean <- seeded_cover %>% clean_names() %>%
+  dplyr::select(native_species, native_species_percent_cover, parent_global_id) %>% 
+  rename(global_id = parent_global_id,
+         species = native_species,
+         cover = native_species_percent_cover) %>% 
+    mutate(species = case_when(
+    species == "Phacelia_distans" ~ "PHDI")) %>% 
+  filter(species == "PHDI") 
+phdimerge <- merge(phdiclean, globaltreatments, by=c("global_id"), all = TRUE) %>% 
+  replace_na(list(cover = 0, species = "PHDI"))
+  
+clpuclean <- seeded_cover %>% clean_names() %>%
+  dplyr::select(native_species, native_species_percent_cover, parent_global_id) %>% 
+  rename(global_id = parent_global_id,
+         species = native_species,
+         cover = native_species_percent_cover) %>% 
+    mutate(species = case_when(
+    species == "Clarkia_purpurea" ~ "CLPU")) %>% 
+  filter(species == "CLPU") 
+clpumerge <- merge(clpuclean, globaltreatments, by=c("global_id"), all = TRUE) %>% 
+  replace_na(list(cover = 0, species = "CLPU"))
+
+cameclpumerge<- merge(clpumerge, camemerge, by = c("global_id"))
+
+allseededcover <- merge(cameclpumerge, phdimerge, by=c("global_id")) %>% 
+  rename(CLPU = cover.x, CAME = cover.y, PHDI = cover) %>% 
+  dplyr::select(global_id, CLPU, CAME, PHDI, weeding, seeding) %>% 
+  pivot_longer(cols = CLPU:PHDI) %>% 
+  rename(species = name,
+         cover = value) %>% 
+    filter(! seeding  == "None")
+
+# count of 3 seeded species 
+density_seeded_clean <- density_seeded %>% 
+  group_by(species, weeding, seeding) %>% 
+  mutate(weeding = case_when(
+             weeding == "thatch" ~ "Thatch Removal",
+             weeding == "clethodim" ~ "Herbicide",
+             weeding == "burn" ~ "Burn",
+             weeding == "control" ~ "Control")) %>% 
+  mutate(seeding = case_when(
+    seeding == "none" ~ "None",
+    seeding == "low" ~ "Low",
+    seeding == "high" ~ "High"))
+
+# area of each subplot
+subplot_area_clean <- subplot_area %>% clean_names() %>%  group_by(weeding, seeding) %>% filter(! seeding == "none") %>% 
   mutate(weeding = case_when(
              weeding == "thatch removal" ~ "Thatch Removal",
              weeding == "herbicide" ~ "Herbicide",
              weeding == "burn" ~ "Burn",
-             weeding == "control" ~ "Control"))
+             weeding == "control" ~ "Control")) %>% 
+  mutate(seeding = case_when(
+    seeding == "low" ~ "Low",
+    seeding == "high" ~ "High"))
+
+# success rate for each plot
+successrateeach <- merge(density_seeded_clean, subplot_area_clean, by=c("seeding", "weeding", "species"), all = TRUE) %>% filter(!seeding == "None") %>% 
+  mutate(success_rate = (count/seeds_meter) * 100) %>% 
+   mutate(weeding= fct_relevel(weeding, "Control", "Thatch Removal", "Herbicide", "Burn"),
+         seeding = fct_relevel(seeding, "Low", "High"),
+         species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
+
+# success rate averaged per subplot
+seededmeans <- density_seeded_clean %>% 
+  reframe(mean = mean(count)) %>% 
+  filter(!seeding == "none") %>% 
+  rename(averagecount = mean)
+
+successrate <- merge(seededmeans, subplot_area_clean, by=c("seeding","weeding", "species")) %>% 
+  mutate(success_rate = (averagecount/seeds_meter) * 100) %>% 
+   mutate(weeding= fct_relevel(weeding, "Control", "Thatch Removal", "Herbicide", "Burn"),
+         seeding = fct_relevel(seeding, "low", "high"),
+         species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
+
+# just thatch
+thatch <- veg_data_clean %>% dplyr::select(thatch_cover, weeding, seeding)
+countsum <- density_seeded_clean %>% group_by(weeding, seeding, species) %>% 
+  reframe(countsum = sum(count))
+
+thatch_seeded <- merge(thatch, countsum, by=c("weeding", "seeding")) %>% 
+  filter(! seeding == "None")
+
+# just native cover
+natives <- veg_data_clean %>%  dplyr::select(native_cover, weeding, seeding) %>% 
+  filter(! seeding == "None")
+natives_seeded <- merge(natives, successrateeach, by=c("weeding", "seeding"), all = TRUE)
+
+seededcountcover <- merge(successrateeach, allseededcover, by=c("weeding","seeding", "species"), all=TRUE)
 ```
 
-# ANOVAS
-## Thatch Cover 
+# ANOVAS & Plots
+## Thatch Cover
 ```{r}
 hist(veg_data_clean $ thatch_cover)
 ## bimodal, doing Kruskal-Wallis
@@ -168,19 +268,351 @@ ggplot(veg_data_clean) +
 ```
 
 ## Non-native Cover
+```{r}
+hist(veg_data_clean $ nonnative_cover)
+
+nonnativecover_aov <- aov(sqrt(nonnative_cover) ~ weeding * seeding, data = veg_data_clean)
+
+summary(nonnativecover_aov)
+
+plot(nonnativecover_aov)
+
+cooksnonnativeaov <- cooks.distance(nonnativecover_aov)
+
+plot(cooksnonnativeaov)
+## all looking fairly normal! make sure to note that i took square root of nonnative cover
+
+leveneTest(sqrt(nonnative_cover) ~ weeding * seeding, veg_data_clean)
+## variances sig O----O
+
+TukeyHSD(nonnativecover_aov)
+## post-hoc slay, elab on pairwise combinations
+
+effectsize::eta_squared(nonnativecover_aov)
+# effect size is large for weeding effect, not seeding
+
+# plot
+ggplot(veg_data_clean) +
+  aes(x = weeding, y = nonnative_cover, color = seeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = c("#FFC567", "#67C0AC", "#B660CD")) 
+  #labs(x = "Weeding Treatment",
+       #y = "Count",
+       #color = "Seeding Rate",
+       #title = "Native Density by Weeding and Seeding Treatments")
+
+```
+
+## Cover Plot
+```{r}
+ggplot(data = allseededcover) +
+  aes(x = weeding, y = cover, color = seeding) +
+  geom_boxplot() +
+  facet_wrap(vars(species)) + theme_minimal() +
+  scale_color_manual(values = c("#67C0AC", "#B660CD")) +
+  #labs(x = "Treatment",
+       #y = "Success Rate",
+       #color = "Treatment") +
+  theme(axis.text.x = element_text(angle = 30))
+```
 
 ## CAME Cover
+```{r}
+CAMEcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
+  filter(species == "CAME")
+
+hist(CAMEcover $ cover)
+
+camecover_aov <- aov(sqrt(cover) ~ weeding * seeding, data = CAMEcover)
+
+summary(camecover_aov)
+
+plot(camecover_aov)
+
+cookscamecoveraov <- cooks.distance(camecover_aov)
+
+plot(cookscamecoveraov)
+# like kind of normal?
+
+leveneTest(sqrt(cover) ~ weeding * seeding, CAMEcover)
+## variances are not equal :/
+
+TukeyHSD(camecover_aov)
+
+effectsize::eta_squared(camecover_aov)
+# large effect for weeding
+
+ggplot(CAMEcover) +
+  aes(x = weeding, y = cover, color = seeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = c("#67C0AC", "#B660CD")) 
+```
 
 ## PHDI Cover
+```{r}
+PHDIcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
+  filter(species == "PHDI")
 
-## CLPU Cover
+hist(PHDIcover $ cover)
+
+phdicover_aov <- aov(cover ~ weeding * seeding, data = PHDIcover)
+
+summary(phdicover_aov)
+
+plot(phdicover_aov)
+
+cooksphdicoveraov <- cooks.distance(phdicover_aov)
+
+plot(cooksphdicoveraov)
+# like kind of normal?
+
+leveneTest(cover ~ weeding * seeding, PHDIcover)
+## variances are not equal :/
+
+TukeyHSD(phdicover_aov)
+
+effectsize::eta_squared(phdicover_aov)
+# medium effect for weeding
+
+ggplot(PHDIcover) +
+  aes(x = weeding, y = cover, color = seeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = c("#67C0AC", "#B660CD")) 
+```
+
+## CLPU Cover < NOT helpful, only ever 0 or 1 CLPU cover
+```{r}
+CLPUcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
+  filter(species == "CLPU")
+
+hist(CLPUcover $ cover)
+
+clpucover_aov <- aov(cover ~ weeding * seeding, data = CLPUcover)
+
+summary(clpucover_aov)
+
+plot(clpucover_aov)
+
+cooksclpucoveraov <- cooks.distance(clpucover_aov)
+
+plot(cooksclpucoveraov)
+# like kind of normal?
+
+leveneTest(cover ~ weeding * seeding, CLPUcover)
+## variances are equal!
+
+TukeyHSD(clpucover_aov)
+
+effectsize::eta_squared(clpucover_aov)
+
+ggplot(CLPUcover) +
+  aes(x = weeding, y = cover, color = seeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = c("#67C0AC", "#B660CD")) 
+```
+
+## Success Rate Plot
+```{r}
+ggplot(data = successrateeach) +
+  aes(x = weeding, y = success_rate, color = seeding) +
+  geom_boxplot() +
+  facet_wrap(vars(species)) + theme_minimal() +
+      scale_color_manual(values = c("#67C0AC", "#B660CD")) +
+  labs(x = "Treatment",
+       y = "Success Rate",
+       color = "Treatment") +
+  theme(axis.text.x = element_text(angle = 30))
+```
 
 ## CAME Success
+```{r}
+CAMEsuccess <- successrateeach %>% filter(species == "CAME")
+
+hist(CAMEsuccess $ success_rate)
+
+camesuccess_aov <- aov(sqrt(success_rate) ~ weeding * seeding, data = CAMEsuccess)
+
+summary(camesuccess_aov)
+
+plot(camesuccess_aov)
+
+cookscamesuccessaov <- cooks.distance(camesuccess_aov)
+
+plot(cookscamesuccessaov)
+# okay-ish normal
+
+leveneTest(success_rate ~ weeding * seeding, CAMEsuccess)
+## variances are NOT equal :/
+
+TukeyHSD(camesuccess_aov)
+
+effectsize::eta_squared(camesuccess_aov)
+# weeding large effect
+
+ggplot(CAMEsuccess) +
+  aes(x = weeding, y = success_rate, color = seeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = c("#67C0AC", "#B660CD"))  
+ # labs(x = "Treatment",
+     #  y = "Cover (%)",
+      # color = "Treatment")
+       #title = "Non-Native Density by Weeding Treatment") 
+```
 
 ## PHDI Success
+```{r}
+PHDIsuccess <- successrateeach %>% filter(species == "PHDI")
+
+hist(PHDIsuccess $ success_rate)
+
+phdisuccess_aov <- aov(success_rate ~ weeding * seeding, data = PHDIsuccess)
+
+summary(phdisuccess_aov)
+
+plot(phdisuccess_aov)
+
+cooksphdisuccessaov <- cooks.distance(phdisuccess_aov)
+
+plot(cooksphdisuccessaov)
+# okay-ish normal???
+
+leveneTest(success_rate ~ weeding * seeding, PHDIsuccess)
+## variances are NOT equal :/
+
+TukeyHSD(phdisuccess_aov)
+
+effectsize::eta_squared(phdisuccess_aov)
+# weeding large effect
+
+ggplot(PHDIsuccess) +
+  aes(x = weeding, y = success_rate, color = seeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = c("#67C0AC", "#B660CD"))  
+ # labs(x = "Treatment",
+     #  y = "Cover (%)",
+      # color = "Treatment")
+       #title = "Non-Native Density by Weeding Treatment") 
+```
 
 ## CLPU Success
+```{r}
+CLPUsuccess <- successrateeach %>% filter(species == "CLPU")
+
+hist(CLPUsuccess $ success_rate)
+
+clpusuccess_aov <- aov(sqrt(success_rate) ~ weeding * seeding, data = CLPUsuccess)
+
+summary(clpusuccess_aov)
+
+plot(clpusuccess_aov)
+
+cooksclpusuccessaov <- cooks.distance(clpusuccess_aov)
+
+plot(cooksclpusuccessaov)
+# okay-ish normal???
+
+leveneTest(success_rate ~ weeding * seeding, CLPUsuccess)
+## variances are NOT equal :/
+
+TukeyHSD(clpusuccess_aov)
+
+effectsize::eta_squared(clpusuccess_aov)
+# weeding large effect
+
+ggplot(CLPUsuccess) +
+  aes(x = weeding, y = success_rate, color = seeding) +
+  geom_boxplot() +
+ geom_point(position=position_jitterdodge(
+   jitter.width = 0,
+   jitter.height = 0,
+    seed = NULL),
+            alpha = 0.3) +
+  theme_minimal() +
+  scale_color_manual(values = c("#67C0AC", "#B660CD"))  
+ # labs(x = "Treatment",
+     #  y = "Cover (%)",
+      # color = "Treatment")
+       #title = "Non-Native Density by Weeding Treatment") 
+```
 
 ## total count of species per species & thatch cover
+```{r}
+thatchseeded_aov <- aov(sqrt(countsum) ~ species * thatch_cover, data = thatch_seeded)
 
-## total native cover per came clpu and phdi
+hist(thatch_seeded $ countsum)
+
+plot(thatchseeded_aov)
+# that scale-location ew
+
+summary(thatchseeded_aov)
+
+cooksthatchseededaov <- cooks.distance(thatchseeded_aov)
+
+plot(cooksthatchseededaov)
+# okay-ish normal???
+
+leveneTest(sqrt(countsum) ~ species * thatch_cover, thatch_seeded)
+## can't
+
+TukeyHSD(thatchseeded_aov)
+# CAME is significantly different than both CLPU and PHDI
+
+effectsize::eta_squared(thatchseeded_aov)
+# medium effect of both species and thatch_cover, with interaction!!!
+
+ggplot(thatch_seeded) +
+  aes(x = thatch_cover, y = sqrt(countsum), color = species) +
+  geom_line()
+# basically says that any thatch cover suppresses specifically CAME from germinating, but PHDI and CLPU germ are relatively the same 
+```
+
+## total native cover per came clpu and phdi < not done with this 
+```{r}
+ggplot(natives_seeded) +
+  aes(x = success_rate, y = native_cover, color = species) +
+  geom_line()
+
+ggplot(seededcountcover) +
+  aes(x = success_rate, y = cover, color = species) +
+  geom_line()
+```
+
+## fire temp & fuel bed depth
+
+## fire temp & seeding rate

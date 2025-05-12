@@ -27,7 +27,6 @@ subplot_area <- read_xlsx(path = here("data",
 ```
 
 ## group up
-
 ```{r}
 density_seeded_clean <- density_seeded %>% 
   group_by(species, weeding, seeding)
@@ -41,7 +40,6 @@ subplot_area_clean <- subplot_area %>% clean_names() %>%  group_by(weeding, seed
 ```
 
 # plottin
-
 ```{r}
 ggplot(density_seeded_clean) +
   aes(x = weeding , y = count, color = weeding) +
@@ -52,12 +50,11 @@ ggplot(density_seeded_clean) +
     seed = NULL),
             alpha = 0.3) +
   theme_minimal() +
- facet_wrap(vars(species)) 
- # scale_color_manual(values = c("#FFC567", "#67C0AC", "#B660CD"))
+ facet_wrap(vars(species)) +
+ scale_color_manual(values = c("#FFC567", "#67C0AC", "#B660CD"))
 ```
 
 ## CAME
-
 ```{r}
 CAME <- density_seeded_clean %>% 
   filter(species == "CAME") %>% 
@@ -74,7 +71,6 @@ TukeyHSD(CAME_aov)
 ```
 
 ## success rate
-
 ```{r}
 seededmeans <- density_seeded_clean %>% 
   reframe(mean = mean(count)) %>% 
@@ -87,15 +83,12 @@ seededmeans <- density_seeded_clean %>%
   rename(averagecount = mean)
 
 successrate <- merge(seededmeans, subplot_area_clean, by=c("seeding","weeding", "species")) %>% 
-  mutate(success_rate = (averagecount/seeds_meter)*100) %>% 
+  mutate(success_rate = (averagecount/seeds_meter) * 100) %>% 
    mutate(weeding= fct_relevel(weeding, "Control", "Thatch Removal", "Herbicide", "Burn"),
          seeding = fct_relevel(seeding, "low", "high"),
          species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
 ```
 
-```{r}
-
-```
 
 ```{r}
 ggplot(data = successrate) +
