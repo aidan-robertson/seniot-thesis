@@ -5,6 +5,7 @@ editor: visual
 ---
 
 # Packages
+
 ```{r}
 #| message: false
 # general use
@@ -29,6 +30,7 @@ theme_set(theme_bottomlegend)
 ```
 
 # Data Reading
+
 ```{r}
 veg_data <- read_xlsx(path = here("data", 
                         "post_treatment_veg_all.xlsx"),
@@ -53,6 +55,7 @@ subplot_area <- read_xlsx(path = here("data",
 ```
 
 # Cleaning
+
 ```{r}
 # veg cover data, includes N, NN, thatch cover
 veg_data_clean <- veg_data %>% 
@@ -223,7 +226,9 @@ fuel_burn_temp <- merge(fuel_depth_clean, burn_temps_block, by=c("block","distan
 ```
 
 # ANOVAS & Plots
-## ⭐Thatch Cover 
+
+## Thatch Cover
+
 ```{r}
 thatch_summary <- veg_data_clean %>%  group_by(weeding)
 
@@ -261,7 +266,8 @@ ggplot(veg_data_clean) +
        color = "Treatment")
 ```
 
-## ⭐Native Cover
+## Native Cover
+
 ```{r}
 hist(veg_data_clean $ native_cover)
 
@@ -302,7 +308,8 @@ ggplot(veg_data_clean) +
 
 ```
 
-## ⭐Non-native Cover
+## Non-native Cover
+
 ```{r}
 hist(veg_data_clean $ nonnative_cover)
 
@@ -344,6 +351,7 @@ ggplot(veg_data_clean) +
 ```
 
 ## Cover Plot
+
 ```{r}
 ggplot(data = allseededcover) +
   aes(x = weeding, y = cover, color = seeding) +
@@ -361,7 +369,8 @@ ggplot(data = allseededcover) +
   theme(axis.text.x = element_text(angle = 30))
 ```
 
-## ⭐CAME Cover
+## CAME Cover
+
 ```{r}
 CAMEcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
   filter(species == "CAME")
@@ -402,7 +411,8 @@ ggplot(CAMEcover) +
        color = "Seeding Rate")
 ```
 
-## ⭐PHDI Cover
+## PHDI Cover
+
 ```{r}
 PHDIcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
   filter(species == "PHDI")
@@ -443,7 +453,8 @@ ggplot(PHDIcover) +
        color = "Seeding Rate")
 ```
 
-## ⭐CLPU Cover < NOT helpful, only ever 0 or 1 CLPU cover
+## CLPU Cover \< NOT helpful, only ever 0 or 1 CLPU cover
+
 ```{r}
 CLPUcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
   filter(species == "CLPU")
@@ -486,6 +497,7 @@ ggplot(CLPUcover) +
 ```
 
 ## Success Rate Plot
+
 ```{r}
 ggplot(data = successrateeach) +
   aes(x = weeding, y = success_rate, color = seeding) +
@@ -499,6 +511,7 @@ ggplot(data = successrateeach) +
 ```
 
 ## CAME Success
+
 ```{r}
 CAMEsuccess <- successrateeach %>% filter(species == "CAME")
 
@@ -539,6 +552,7 @@ ggplot(CAMEsuccess) +
 ```
 
 ## PHDI Success
+
 ```{r}
 PHDIsuccess <- successrateeach %>% filter(species == "PHDI")
 
@@ -580,6 +594,7 @@ ggplot(PHDIsuccess) +
 ```
 
 ## CLPU Success
+
 ```{r}
 CLPUsuccess <- successrateeach %>% filter(species == "CLPU")
 
@@ -620,7 +635,7 @@ ggplot(CLPUsuccess) +
        #title = "Non-Native Density by Weeding Treatment") 
 ```
 
-## total count of species per species & thatch cover
+## total count of species per species & thatch cover -- giving me trouble
 ```{r}
 thatchseeded_lm <- lm(sqrt(countsum) ~ species + thatch_avg, data = TNsum)
 
@@ -657,7 +672,7 @@ ggplot(all_seeded) +
 # basically says that any thatch cover suppresses specifically CAME from germinating, but PHDI and CLPU germ are relatively the same 
 ```
 
-## total native cover per came clpu and phdi 
+## total native cover per came clpu and phdi -  misleading?
 ```{r}
 ggplot(all_seeded) +
   aes(x = success_rate, y = native_cover, color = species) +
@@ -695,7 +710,7 @@ ggplot(all_seeded) +
 ###WIPPPP
 ```
 
-## interesting?
+## interesting? percent of natives from seeded species
 ```{r}
 ## species and percent of native cover they make up > CAME is responding well to the burn by increasing cover (reduction of thatch = yay)
 ggplot(all_seeded) +
@@ -707,25 +722,15 @@ ggplot(all_seeded) +
     aes(x = weeding, y = cover, color = species) +
   geom_boxplot() +
   facet_wrap(~species)
-
-ggplot(all_seeded) +
-  aes(x = native_cover, y = cover, color = species) +
-  geom_smooth(method = "lm", formula = y~x) +
-  geom_point() ## nope
-
-ggplot(veg_data_clean) +
-  aes(x = thatch_cover, y = native_cover, color = weeding) +
-  geom_point() 
-
-ggplot(all_seeded) +
-  aes(x = success_rate, y = percent_seeded)
 ```
 
+# glm native cover and thatch/non-native
 ```{r}
 ## LM native cover and nonnative cover
 ggplot(all_seeded) +
-         aes(x = nonnative_cover, y = native_cover, color = weeding) +
-  geom_smooth(method = "lm", formula = y~x) +
+         aes(x = nonnative_cover, y = native_cover, color = FALSE) +
+  geom_smooth(method = "glm", formula = y~x,
+              method.args = list(family = gaussian(link = 'log'))) +
   geom_point(position=position_jitterdodge(
    jitter.width = 0,
    jitter.height = 0,
@@ -735,39 +740,43 @@ ggplot(all_seeded) +
   scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
   labs(x = "Nonnative Cover (%)",
        y = "Native Cover (%)",
-       color = "Treatment") +
-  ylim(0,100) + xlim(0,100)
+       color = "Treatment") 
 
-N3_lm <- lm(native_cover ~ nonnative_cover * weeding, data = all_seeded)
+N3_lm <- lm(native_cover ~ nonnative_cover * thatch_cover, data = all_seeded)
+
+nls()
 
 summary(N3_lm)
 plot(N3_lm)
 car::vif(N3_lm, type='predictor')
 
-NT_lm <- lm(native_cover ~ thatch_cover * weeding, data = all_seeded)
+NT_lm <- lm(native_cover ~ thatch_cover, data = all_seeded)
 summary(NT_lm)
 
 
 ## LM native cover and thatch cover
-ggplot(all_seeded) +
-         aes(x = thatch_cover, y = native_cover, color = weeding) +
-  geom_smooth(method = "lm", formula = y~x) +
-  geom_point(position=position_jitterdodge(
-   jitter.width = 0,
-   jitter.height = 0,
-    seed = NULL),
-            alpha = 0.3) +
-  theme_minimal() +
-  scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
-  labs(x = "Thatch Cover (%)",
-       y = "Native Cover (%)",
-       color = "Treatment") +
-  ylim(0,100)+ xlim(0,100)
+AS_noburn <- all_seeded %>% filter(! weeding == "Burn")
 
-N3T_lm <- lm(native_cover ~ nonnative_cover + thatch_cover + weeding, data = all_seeded)
+ggplot(all_seeded) +
+         aes(x = thatch_cover, y = native_cover, color = FALSE) +
+  geom_smooth(method = "glm", formula = y~x,
+              method.args = list(family = gaussian(link = "log"))) +
+  geom_point(alpha = 0.3) +
+  theme_minimal() +
+  #scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
+  labs(x = "Thatch Cover (%)",
+       y = "Native Cover (%)")
+      # color = "Treatment") 
+
+N3_glm <- glm(native_cover ~ thatch_cover, data=all_seeded, family=gaussian(link = "log"))
+
+plot(N3_glm)
+
+summary(N3_glm)
+
+N3T_lm <- lm(native_cover ~ thatch_cover * weeding, data = AS_noburn)
 summary(N3T_lm)
 ```
-
 
 ## fire temp & fuel bed depth
 ```{r}
