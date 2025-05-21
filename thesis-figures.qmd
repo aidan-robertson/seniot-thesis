@@ -20,8 +20,7 @@ library(multcomp)
 library(extrafont)
 font_import()
 loadfonts(device="win")
-fonts()
-windowsFonts(Times=windowsFont("Times New Roman"))
+
 
 theme_bottomlegend <- theme_minimal() %+replace% 
                            theme(legend.position = "bottom")
@@ -142,7 +141,8 @@ allseededcover <- merge(cameclpumerge, phdimerge, by=c("global_id", "weeding", "
   pivot_longer(cols = CLPU:PHDI) %>% 
   rename(species = name,
          cover = value) %>% 
-    filter(! seeding  == "None")
+    filter(! seeding  == "None") %>% mutate(species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
+  
 
 # count of 3 seeded species 
 density_seeded_clean <- density_seeded %>% 
@@ -258,12 +258,13 @@ ggplot(veg_data_clean) +
    jitter.height = 0,
     seed = NULL),
             alpha = 0.3) +
-  theme_minimal() +
+  theme(legend.position="none") +
   ylim(0,100) +
   scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
   labs(x = "Treatment",
-       y = "Cover (%)",
-       color = "Treatment")
+       y = "Thatch Cover (%)") +
+  theme(text=element_text(size=12, 
+    family="Times New Roman", color = 'black'))
 ```
 
 ## Native Cover
@@ -300,11 +301,12 @@ ggplot(veg_data_clean) +
    jitter.height = 0,
     seed = NULL),
             alpha = 0.3) +
-  theme_minimal() +
-  scale_color_manual(values = c("#e52e39", "#FFC567", "#67C0AC")) +
+  scale_color_manual(values = c("#e52e39", "#FFBF00", "#3271a5")) +
   labs(x = "Treatment",
-       y = "Cover (%)",
-       color = "Seeding Rate")
+       y = "Native Cover (%)",
+       color = "Seeding Rate") +
+  theme(text=element_text(size=12, 
+    family="Times New Roman", color = 'black'))
 
 ```
 
@@ -342,11 +344,12 @@ ggplot(veg_data_clean) +
    jitter.height = 0,
     seed = NULL),
             alpha = 0.3) +
-  theme_minimal() +
-  scale_color_manual(values = c("#e52e39", "#FFC567", "#67C0AC")) +
+  scale_color_manual(values = c("#e52e39", "#FFBF00", "#3271a5")) +
   labs(x = "Treatment",
-       y = "Cover (%)",
-       color = "Seeding Rate")
+       y = "Non-Native Cover (%)",
+       color = "Seeding Rate")+
+  theme(text=element_text(size=12, 
+    family="Times New Roman", color = 'black'))
 
 ```
 
@@ -361,12 +364,13 @@ ggplot(data = allseededcover) +
    jitter.height = 0,
     seed = NULL),
             alpha = 0.3) +
-  facet_wrap(vars(species)) + theme_minimal() +
-  scale_color_manual(values = c("#FFC567", "#67C0AC")) +
+  facet_wrap(~species, ncol = 1, scales = "free") +
   labs(x = "Treatment",
        y = "Cover (%)",
        color = "Seeding Rate") +
-  theme(axis.text.x = element_text(angle = 30))
+  scale_color_manual(values = c("#FFBF00", "#3271a5")) +
+  theme(text=element_text(size=12, 
+    family="Times New Roman", color = 'black'))
 ```
 
 ## CAME Cover
@@ -502,12 +506,13 @@ ggplot(CLPUcover) +
 ggplot(data = successrateeach) +
   aes(x = weeding, y = success_rate, color = seeding) +
   geom_boxplot() +
-  facet_wrap(vars(species)) + theme_minimal() +
-      scale_color_manual(values = c("#FFC567", "#67C0AC")) +
+  facet_wrap(~species, ncol = 1, scales = 'free') +
   labs(x = "Treatment",
-       y = "Success",
+       y = "Success Rate (%)",
        color = "Seeding Rate") +
-  theme(axis.text.x = element_text(angle = 30))
+  scale_color_manual(values = c("#FFBF00", "#3271a5")) +
+  theme(text=element_text(size=12, 
+    family="Times New Roman", color = 'black'))
 ```
 
 ## CAME Success
@@ -545,7 +550,7 @@ ggplot(CAMEsuccess) +
     seed = NULL),
             alpha = 0.3) +
   theme_minimal() +
-      scale_color_manual(values = c("#FFC567", "#67C0AC")) +
+      scale_color_manual(values = c("#FFC567", "#77c3ec")) +
   labs(x = "Treatment",
        y = "Success",
        color = "Seeding Rate")
@@ -678,7 +683,14 @@ ggplot(all_seeded) +
   aes(x = success_rate, y = native_cover, color = species) +
   geom_smooth(method="lm", formula = y ~ x) +
   geom_point() +
-  theme_minimal() # feels like a misleading figure tbh
+  theme_minimal() +
+  scale_color_manual(values = c("#228c22", "#4054d9", "#d9409c")) +
+  labs(x = "Success Rate (%)",
+       y = "Native Cover (%)",
+       color = "Species") +
+  xlim(0,50) + ylim(0,100) +
+  theme(text=element_text(size=12, 
+    family="Times New Roman", color = 'black'))
 
 hist(TN_seeded_wide $ native_cover)
 
@@ -724,83 +736,56 @@ ggplot(all_seeded) +
   facet_wrap(~species)
 ```
 
-# glm native cover and thatch/non-native
+# lm native cover and thatch/non-native - for thesis
 ```{r}
 ## LM native cover and nonnative cover
 ggplot(all_seeded) +
-         aes(x = nonnative_cover, y = native_cover, color = FALSE) +
-  geom_smooth(method = "glm", formula = y~x,
-              method.args = list(family = gaussian(link = 'log'))) +
-  geom_point(position=position_jitterdodge(
-   jitter.width = 0,
-   jitter.height = 0,
-    seed = NULL),
-            alpha = 0.3) +
-  theme_minimal() +
-  scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
-  labs(x = "Nonnative Cover (%)",
-       y = "Native Cover (%)",
-       color = "Treatment") 
-
-N3_lm <- lm(native_cover ~ nonnative_cover * thatch_cover, data = all_seeded)
-
-nls()
-
-summary(N3_lm)
-plot(N3_lm)
-car::vif(N3_lm, type='predictor')
-
-NT_lm <- lm(native_cover ~ thatch_cover, data = all_seeded)
-summary(NT_lm)
-
-
-## LM native cover and thatch cover
-AS_noburn <- all_seeded %>% filter(! weeding == "Burn")
-
-ggplot(all_seeded) +
-         aes(x = thatch_cover, y = native_cover, color = FALSE) +
-  geom_smooth(method = "glm", formula = y~x,
-              method.args = list(family = gaussian(link = "log"))) +
+         aes(x = nonnative_cover, y = native_cover, color = seeding) +
+  geom_smooth(method = "lm", formula = y~x) +
   geom_point(alpha = 0.3) +
-  theme_minimal() +
-  #scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
-  labs(x = "Thatch Cover (%)",
-       y = "Native Cover (%)")
-      # color = "Treatment") 
+   scale_color_manual(values = c("#FFBF00", "#3271a5")) +
+  labs(x = "Non-native Cover (%)",
+       y = "Native Cover (%)",
+       color = "Seeding Rate") +
+  xlim(0,105) + ylim(0,100) +
+  theme(text=element_text(size=12, 
+    family="Times New Roman", color = 'black')) 
 
-N3_glm <- glm(native_cover ~ thatch_cover, data=all_seeded, family=gaussian(link = "log"))
+N_thesis <- lm(native_cover ~ thatch_cover + nonnative_cover + seeding + thatch_cover:nonnative_cover + thatch_cover:seeding + nonnative_cover:seeding, data = all_seeded)
+plot(N_thesis)
+car::vif(N_thesis)
+summary(N_thesis)
 
-plot(N3_glm)
-
-summary(N3_glm)
-
-N3T_lm <- lm(native_cover ~ thatch_cover * weeding, data = AS_noburn)
-summary(N3T_lm)
 ```
 
 ## fire temp & fuel bed depth
 ```{r}
 fuel_temp_ss <- fuel_burn_temp %>% 
-  filter(tag_depth == "surface") %>% 
+  filter(tag_depth == "sub-surface") %>% 
   mutate(block = case_when(
-             block == "east" ~ "No Seed",
-             block == "west" ~ "No Seed",
-             block == "north" ~ "Low Seed",
-             block == "south" ~ "High Seed")) %>% 
-  mutate(block = fct_relevel(block, "No Seed", "Low Seed", "High Seed")) %>% 
-  group_by(tag_depth)
-  
+             block == "east" ~ "1",
+             block == "west" ~ "2",
+             block == "north" ~ "3",
+             block == "south" ~ "4"))
+         #tag_depth = case_when(
+          # tag_depth == "surface" ~ "Surface",
+           #tag_depth == "sub-surface" ~ "Sub-surface")) %>% 
+ # mutate(tag_depth = fct_relevel(tag_depth, "Surface", "Sub-surface"))  
+
 
 ggplot(fuel_temp_ss,
        aes(x = fuel_depth,
            y = max_temp,
            color = block)) +
   geom_smooth(method = "lm", formula = y~x) + geom_point() +
-  scale_color_manual(values = c("#e52e39", "#FFC567", "#67C0AC")) +
+  #scale_color_manual(values = c("#ff3c00", "#ff7600", "#ff6701","#ff9d00")) +
+  #scale_color_manual(values = c("#016e6d", "#016261", "#014949","#015555")) +
   labs(x = "Fuel Depth",
        y = "Maximum Temperature (C)",
-       color = "Subplot") +
-  ylim(0, 400)
+       color = "Array") +
+  ylim(0, 525) +
+  theme(text=element_text(size=12, 
+    family="Times New Roman", color = 'black')) 
 
 ggplot(fuel_temp_ss) +
   aes(x = tag_depth, y = max_temp, color = block) +
@@ -808,4 +793,5 @@ ggplot(fuel_temp_ss) +
 
 fuel_temp_lm <- lm(max_temp ~ fuel_depth, data = fuel_temp_ss)
 summary(fuel_temp_lm)
+plot(fuel_temp_lm)
 ```
