@@ -13,13 +13,13 @@ library(tidyverse)
 library(readxl)
 library(here)
 library(janitor)
-library(car)
-library(effectsize)
-library(rstatix)
-library(multcomp)
+library(car) # levene test
+library(effectsize) # assess effect size 
+library(rstatix) # anova, kruskal wallis
+#library(multcomp) not using?
 library(extrafont)
-font_import()
-loadfonts(device="win")
+#font_import()
+#loadfonts(device="win")
 
 
 theme_bottomlegend <- theme_minimal() %+replace% 
@@ -29,7 +29,6 @@ theme_set(theme_bottomlegend)
 ```
 
 # Data Reading
-
 ```{r}
 veg_data <- read_xlsx(path = here("data", 
                         "post_treatment_veg_all.xlsx"),
@@ -54,21 +53,20 @@ subplot_area <- read_xlsx(path = here("data",
 ```
 
 # Cleaning
-
 ```{r}
 # veg cover data, includes N, NN, thatch cover
 veg_data_clean <- veg_data %>% 
   clean_names() %>% 
-dplyr::select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, transect_distance_of_quadrat, count_of_native_species, sum_of_native_cover, sum_of_non_native_cover, count_of_non_native_species, sum_of_unknown_cover, sum_of_thatch, bare_ground, sum_of_all_cover) %>% 
-  rename(treatment = unlisted_lagoon_transect_name_number,
+dplyr::select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, transect_distance_of_quadrat, count_of_native_species, sum_of_native_cover, sum_of_non_native_cover, count_of_non_native_species, sum_of_unknown_cover, sum_of_thatch, bare_ground, sum_of_all_cover) %>% #selecting columns
+  rename(treatment = unlisted_lagoon_transect_name_number, #renaming columns
          native_count = count_of_native_species,
          native_cover = sum_of_native_cover,
          nonnative_count = count_of_non_native_species,
          nonnative_cover = sum_of_non_native_cover,
          thatch_cover = sum_of_thatch,
          plot = transect_distance_of_quadrat) %>% 
-  mutate(total_cover = sum_of_all_cover - sum_of_unknown_cover) %>% 
-  mutate(weeding = case_when(
+  mutate(total_cover = sum_of_all_cover - sum_of_unknown_cover) %>% #fix total cover
+  mutate(weeding = case_when( #separate treatment & seeding rate
              treatment == "Thatch-None" ~ "Thatch Removal",
              treatment == "Thatch-Low" ~ "Thatch Removal",
              treatment == "Thatch-High" ~ "Thatch Removal",
@@ -81,7 +79,7 @@ dplyr::select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, 
              treatment == "Clethodim-None" ~ "Herbicide",
              treatment == "Clethodim-Low" ~ "Herbicide",
              treatment == "Clethodim-High" ~ "Herbicide"),
-         seeding = case_when(
+         seeding = case_when( 
              treatment == "Thatch-None" ~ "None",
              treatment == "Thatch-Low" ~ "Low",
              treatment == "Thatch-High" ~ "High",
@@ -95,7 +93,7 @@ dplyr::select(global_id, monitoring_date, unlisted_lagoon_transect_name_number, 
              treatment == "Clethodim-Low" ~ "Low",
              treatment == "Clethodim-High" ~ "High")) %>% 
   mutate(weeding= fct_relevel(weeding, "Control", "Thatch Removal", "Herbicide", "Burn"),
-         seeding = fct_relevel(seeding, "None", "Low", "High"))
+         seeding = fct_relevel(seeding, "None", "Low", "High")) #order treatments
 
 # cover of 3 seeded species
 globaltreatments <- veg_data_clean %>% dplyr::select(global_id, weeding, seeding, plot)
@@ -173,7 +171,8 @@ successrateeach <- merge(density_seeded_clean, subplot_area_clean, by=c("seeding
   mutate(success_rate = (count/seeds_meter) * 100) %>% 
    mutate(weeding= fct_relevel(weeding, "Control", "Thatch Removal", "Herbicide", "Burn"),
          seeding = fct_relevel(seeding, "Low", "High"),
-         species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
+         species = fct_relevel(species, "CAME", "PHDI", "CLPU")) %>% 
+  dplyr::select(weeding, seeding, plot, species, success_rate)
 
 successrate_wide <- successrateeach %>%  dplyr::select(weeding, seeding, species, success_rate, plot) %>%  pivot_wider(names_from = species, values_from = success_rate)
 
@@ -190,7 +189,7 @@ successrate <- merge(seededmeans, subplot_area_clean, by=c("seeding","weeding", 
          species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
 
 # just thatch
-thatch_native <- veg_data_clean %>% dplyr::select(weeding, seeding, plot, native_cover, thatch_cover, nonnative_cover) 
+thatch_native <- veg_data_clean %>% dplyr::select(weeding, seeding, plot, native_cover, thatch_cover, nonnative_cover, bare_ground) 
 
 countsum <- density_seeded_clean %>% group_by(weeding, seeding, species) %>% 
   reframe(countsum = sum(count)) %>% 
@@ -202,6 +201,7 @@ TNaverage <- thatch_native %>% group_by(weeding, seeding) %>%
 veg_seeded <- merge(thatch_native, density_seeded_clean, by=c("weeding", "seeding", "plot")) %>% 
   filter(! seeding == "None") %>% 
   mutate(species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
+veg_xxx <- merge(thatch_native, density_seeded_clean, by = c("weeding", "seeding", "plot")) %>%  mutate(species = fct_relevel(species, "CAME", "PHDI", "CLPU"))
 
 TNsum <- merge(countsum, TNaverage, by=c("weeding", "seeding")) 
 
@@ -228,7 +228,6 @@ fuel_burn_temp <- merge(fuel_depth_clean, burn_temps_block, by=c("block","distan
 # ANOVAS & Plots
 
 ## Thatch Cover
-
 ```{r}
 thatch_summary <- veg_data_clean %>%  group_by(weeding)
 
@@ -237,7 +236,7 @@ summarize(thatch_summary, mean = mean(thatch_cover), sd = sd(thatch_cover))
 hist(veg_data_clean $ thatch_cover)
 ## bimodal, doing Kruskal-Wallis
 
-kruskal.test(thatch_cover ~ weeding,
+kruskal_test(thatch_cover ~ weeding,
              data = veg_data_clean)
 ## chi-squared 73.12, df = 3, p > 0.001
 
@@ -248,6 +247,7 @@ dunn_test(thatch_cover ~ weeding,
 kruskal_effsize(thatch_cover ~ weeding, 
           data = veg_data_clean)
 ## large effect size 
+
 
 # plot
 ggplot(veg_data_clean) +
@@ -263,12 +263,15 @@ ggplot(veg_data_clean) +
   scale_color_manual(values = c("#38A800", "#FF327C", "#00A9E6", "#F77600")) +
   labs(x = "Treatment",
        y = "Thatch Cover (%)") +
-  theme(text=element_text(size=12, 
-    family="Times New Roman", color = 'black'))
+theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
+
+citation("effectsize")
 ```
 
 ## Native Cover
-
 ```{r}
 hist(veg_data_clean $ native_cover)
 
@@ -305,14 +308,20 @@ ggplot(veg_data_clean) +
   labs(x = "Treatment",
        y = "Native Cover (%)",
        color = "Seeding Rate") +
-  theme(text=element_text(size=12, 
-    family="Times New Roman", color = 'black'))
+  theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
 
 ```
 
 ## Non-native Cover
-
 ```{r}
+nn_veg <- veg_data_clean %>% group_by(weeding, seeding)
+
+summarize(nn_veg, mean = mean(native_cover), sd = sd(native_cover))
+
+
 hist(veg_data_clean $ nonnative_cover)
 
 nonnativecover_aov <- aov(sqrt(nonnative_cover) ~ weeding * seeding, data = veg_data_clean)
@@ -348,8 +357,10 @@ ggplot(veg_data_clean) +
   labs(x = "Treatment",
        y = "Non-Native Cover (%)",
        color = "Seeding Rate")+
-  theme(text=element_text(size=12, 
-    family="Times New Roman", color = 'black'))
+theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
 
 ```
 
@@ -369,15 +380,20 @@ ggplot(data = allseededcover) +
        y = "Cover (%)",
        color = "Seeding Rate") +
   scale_color_manual(values = c("#FFBF00", "#3271a5")) +
-  theme(text=element_text(size=12, 
-    family="Times New Roman", color = 'black'))
+ theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
+  
 ```
 
 ## CAME Cover
 
 ```{r}
 CAMEcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
-  filter(species == "CAME")
+  filter(species == "CAME") %>% group_by(weeding, seeding)
+
+summarize(CAMEcover, mean = mean(cover), sd = sd(cover))
 
 hist(CAMEcover $ cover)
 
@@ -419,7 +435,9 @@ ggplot(CAMEcover) +
 
 ```{r}
 PHDIcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
-  filter(species == "PHDI")
+  filter(species == "PHDI")%>% group_by(weeding, seeding)
+
+summarize(PHDIcover, mean = mean(cover), sd = sd(cover))
 
 hist(PHDIcover $ cover)
 
@@ -461,7 +479,9 @@ ggplot(PHDIcover) +
 
 ```{r}
 CLPUcover <- allseededcover %>% dplyr::select(species, weeding, seeding, cover) %>% 
-  filter(species == "CLPU")
+  filter(species == "CLPU")%>% group_by(weeding, seeding)
+
+summarize(CLPUcover, mean = mean(cover), sd = sd(cover))
 
 summarize(CLPUcover, mean = mean(cover), sd = sd(cover))
 
@@ -511,14 +531,18 @@ ggplot(data = successrateeach) +
        y = "Success Rate (%)",
        color = "Seeding Rate") +
   scale_color_manual(values = c("#FFBF00", "#3271a5")) +
-  theme(text=element_text(size=12, 
-    family="Times New Roman", color = 'black'))
+   theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
 ```
 
 ## CAME Success
 
 ```{r}
-CAMEsuccess <- successrateeach %>% filter(species == "CAME")
+CAMEsuccess <- successrateeach %>% filter(species == "CAME") %>% group_by(weeding, seeding)
+
+summarize(CAMEsuccess, mean = mean(success_rate), sd = sd(success_rate))
 
 hist(CAMEsuccess $ success_rate)
 
@@ -559,7 +583,9 @@ ggplot(CAMEsuccess) +
 ## PHDI Success
 
 ```{r}
-PHDIsuccess <- successrateeach %>% filter(species == "PHDI")
+PHDIsuccess <- successrateeach %>% filter(species == "PHDI")%>% group_by(weeding, seeding)
+
+summarize(PHDIsuccess, mean = mean(success_rate), sd = sd(success_rate))
 
 hist(PHDIsuccess $ success_rate)
 
@@ -601,7 +627,9 @@ ggplot(PHDIsuccess) +
 ## CLPU Success
 
 ```{r}
-CLPUsuccess <- successrateeach %>% filter(species == "CLPU")
+CLPUsuccess <- successrateeach %>% filter(species == "CLPU")%>% group_by(weeding, seeding)
+
+summarize(CLPUsuccess, mean = mean(success_rate), sd = sd(success_rate))
 
 hist(CLPUsuccess $ success_rate)
 
@@ -679,6 +707,32 @@ ggplot(all_seeded) +
 
 ## total native cover per came clpu and phdi -  misleading?
 ```{r}
+breh_wide <- merge(successrate_wide, thatch_native, by = c("weeding", "seeding", "plot")) %>% filter(!PHDI > 40) %>%  filter (!CLPU > 40)
+breh_long <- merge(successrateeach, thatch_native, by = c("weeding", "seeding", "plot")) %>% filter(!success_rate > 40)
+
+breh_lm <- lm(native_cover ~ CAME + PHDI + CLPU, data = breh_wide)
+summary(breh_lm)
+car::vif(breh_lm)
+plot(breh_lm)
+
+
+ggplot(breh_long) +
+  aes(x = success_rate, y = native_cover, color = species) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", formula = y~x) +
+  scale_color_manual(values = c("#228c22", "#4054d9", "#d9409c")) +
+  theme_minimal() +
+  labs(x = "Success Rate (%)",
+       y = "Native Cover (%)",
+       color = "Species") +
+  xlim(0,30) + ylim(0,100) 
+  #theme(text=element_text(size=14, 
+   # family="Times New Roman", color = 'black'),
+    #axis.text.x= element_text(size = 12, color = 'black'),
+   # axis.text.y= element_text(size = 12, color = 'black'))
+
+#filter out two success rates over 40
+
 ggplot(all_seeded) +
   aes(x = success_rate, y = native_cover, color = species) +
   geom_smooth(method="lm", formula = y ~ x) +
@@ -689,14 +743,17 @@ ggplot(all_seeded) +
        y = "Native Cover (%)",
        color = "Species") +
   xlim(0,50) + ylim(0,100) +
-  theme(text=element_text(size=12, 
-    family="Times New Roman", color = 'black'))
+  theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
 
 hist(TN_seeded_wide $ native_cover)
 
 natives_success_lm <- lm(native_cover ~ CAME + PHDI + CLPU, data = TN_seeded_wide)
 
 summary(natives_success_lm)
+
 
 plot(natives_success_lm)
 
@@ -739,22 +796,56 @@ ggplot(all_seeded) +
 # lm native cover and thatch/non-native - for thesis
 ```{r}
 ## LM native cover and nonnative cover
-ggplot(all_seeded) +
-         aes(x = nonnative_cover, y = native_cover, color = seeding) +
+ggplot(veg_data_clean) +
+         aes(x = nonnative_cover, y = native_cover, color = weeding) +
   geom_smooth(method = "lm", formula = y~x) +
   geom_point(alpha = 0.3) +
-   scale_color_manual(values = c("#FFBF00", "#3271a5")) +
-  labs(x = "Non-native Cover (%)",
+   #scale_color_manual(values = c("#e52e39", "#FFBF00", "#3271a5")) +
+  labs(x = "Non-Native Cover (%)",
        y = "Native Cover (%)",
        color = "Seeding Rate") +
   xlim(0,105) + ylim(0,100) +
-  theme(text=element_text(size=12, 
-    family="Times New Roman", color = 'black')) 
+  theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
 
-N_thesis <- lm(native_cover ~ thatch_cover + nonnative_cover + seeding + thatch_cover:nonnative_cover + thatch_cover:seeding + nonnative_cover:seeding, data = all_seeded)
+ggplot(veg_data_clean) +
+    aes(x = thatch_cover, y = native_cover, color = weeding) +
+  geom_smooth(method = "lm", formula = y~x) +
+  geom_point(alpha = 0.3) +
+   #scale_color_manual(values = c("#e52e39", "#FFBF00", "#3271a5")) +
+  labs(x = "Thatch Cover (%)",
+       y = "Native Cover (%)",
+       color = "Seeding Rate") +
+  xlim(0,105) + ylim(0,100) +
+  theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
+
+ggplot(veg_outlier) +
+  aes(x = seeding, y = native_cover) +
+  geom_point() +
+  geom_boxplot()
+
+veg_outlier <- veg_data_clean %>% filter(!native_cover == 77) %>%  filter(!native_cover == 70)
+
+N_thesis <- lm(native_cover ~ thatch_cover + nonnative_cover + seeding + thatch_cover:nonnative_cover + thatch_cover:seeding + nonnative_cover:seeding, data = veg_data_clean)
+N_test <- lm(native_cover ~ thatch_cover * nonnative_cover
+             , data = veg_data_clean)
+summary(N_test)
+car::vif(N_test)
+
+
 plot(N_thesis)
-car::vif(N_thesis)
+car::vif(N_thesis, type = "predictor")
 summary(N_thesis)
+effectsize::effectsize(N_thesis)
+
+## thatch seeding interaction
+
+write.csv(veg_data_clean,"C:/Users/cream/Downloads/veg_data_clean.csv", row.names = FALSE)
 
 ```
 
@@ -779,13 +870,15 @@ ggplot(fuel_temp_ss,
            color = block)) +
   geom_smooth(method = "lm", formula = y~x) + geom_point() +
   #scale_color_manual(values = c("#ff3c00", "#ff7600", "#ff6701","#ff9d00")) +
-  #scale_color_manual(values = c("#016e6d", "#016261", "#014949","#015555")) +
-  labs(x = "Fuel Depth",
-       y = "Maximum Temperature (C)",
+  scale_color_manual(values = c("#016e6d", "#016261", "#014949","#015555")) +
+  labs(x = "Fuel Depth (cm)",
+       y = "Maximum Temperature (C°)",
        color = "Array") +
   ylim(0, 525) +
-  theme(text=element_text(size=12, 
-    family="Times New Roman", color = 'black')) 
+   theme(text=element_text(size=14, 
+    family="Times New Roman", color = 'black'),
+    axis.text.x= element_text(size = 12, color = 'black'),
+    axis.text.y= element_text(size = 12, color = 'black'))
 
 ggplot(fuel_temp_ss) +
   aes(x = tag_depth, y = max_temp, color = block) +
